@@ -7,7 +7,7 @@
 // GAS をデプロイして取得した「ウェブアプリURL」を貼り付けてください。
 // 未設定のままでもダミーデータで動作します。
 // ============================================================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby7tWpVeNsf2_i9LoJwnHnzKBu91CvcY_OZt7rHAmKrm2pCU31eDSWh5-3XPiJA5d_N/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwxFNA02dbnD0AxjvwyBIJpgkv6oJRWudQ9uI8pf66eCS_lh0LHrdz333PtHwxc2rjT/exec';
 // ============================================================
 
 // ---------- ダミーデータ（GAS未設定 or フェッチ失敗時に使用） ----------
@@ -81,16 +81,16 @@ const state = {
   },
 
   asama: {
-    phase:       'setup',   // 'setup' | 'answering' | 'waiting' | 'result'
-    keyword:     '',
-    round:       1,
-    playerName:  '',
-    myAnswer:    '',
-    topic:       '',
-    submitted:   false,
-    pollTimer:   null,
+    phase: 'setup',   // 'setup' | 'answering' | 'waiting' | 'result'
+    keyword: '',
+    round: 1,
+    playerName: '',
+    myAnswer: '',
+    topic: '',
+    submitted: false,
+    pollTimer: null,
     answerCount: 0,
-    answers:     [],
+    answers: [],
   }
 };
 
@@ -314,7 +314,7 @@ function resetTabState(tab) {
     const topicEl = document.getElementById('english-topic');
     const ngEl = document.getElementById('english-ngwords');
     if (topicEl) topicEl.textContent = '';
-    if (ngEl)    ngEl.innerHTML      = '';
+    if (ngEl) ngEl.innerHTML = '';
     setStatus('english-status', '');
   }
 
@@ -345,17 +345,17 @@ function resetTabState(tab) {
 
   if (tab === 'wordwolf') {
     state.wordwolf.flipped = false;
-    state.wordwolf.result  = null;
-    state.wordwolf.myVote  = null;
-    state.wordwolf.phase   = 'setup';
-    state.wordwolf.myNum   = 0;
-    state.wordwolf.total   = 0;
+    state.wordwolf.result = null;
+    state.wordwolf.myVote = null;
+    state.wordwolf.phase = 'setup';
+    state.wordwolf.myNum = 0;
+    state.wordwolf.total = 0;
 
     resetCard('wordwolf-card');
 
     // フェーズセクションをリセット
-    const ids = ['ww-setup','ww-vote-section','ww-reveal-section',
-                 'ww-reversal-section','ww-nonwolf-section','ww-final-section'];
+    const ids = ['ww-setup', 'ww-vote-section', 'ww-reveal-section',
+      'ww-reversal-section', 'ww-nonwolf-section', 'ww-final-section'];
     ids.forEach((id, i) => {
       const el = document.getElementById(id);
       if (el) el.hidden = (i !== 0); // ww-setup だけ表示
@@ -363,27 +363,27 @@ function resetTabState(tab) {
 
     // ボタン状態リセット
     const btnCheck = document.getElementById('btn-check-wordwolf');
-    const btnVote  = document.getElementById('btn-start-vote');
+    const btnVote = document.getElementById('btn-start-vote');
     if (btnCheck) btnCheck.disabled = false;
-    if (btnVote)  btnVote.disabled  = true;
+    if (btnVote) btnVote.disabled = true;
 
     // 準備完了セクションをリセット
     const readySection = document.getElementById('ww-ready-section');
-    const readyBtn     = document.getElementById('btn-ww-ready');
-    const waitingMsg   = document.getElementById('ww-waiting-msg');
+    const readyBtn = document.getElementById('btn-ww-ready');
+    const waitingMsg = document.getElementById('ww-waiting-msg');
     if (readySection) readySection.hidden = true;
-    if (readyBtn)     readyBtn.hidden     = false;
-    if (waitingMsg)   waitingMsg.hidden   = true;
+    if (readyBtn) readyBtn.hidden = false;
+    if (waitingMsg) waitingMsg.hidden = true;
 
     // 入力・表示をクリア
-    const topicEl     = document.getElementById('ww-topic');
+    const topicEl = document.getElementById('ww-topic');
     const voteButtons = document.getElementById('ww-vote-buttons');
-    const voteStatus  = document.getElementById('ww-vote-status');
+    const voteStatus = document.getElementById('ww-vote-status');
     const reversalInput = document.getElementById('ww-reversal-input');
-    if (topicEl)      topicEl.textContent      = '';
-    if (voteButtons)  voteButtons.innerHTML    = '';
-    if (voteStatus)   voteStatus.textContent   = '';
-    if (reversalInput) reversalInput.value     = '';
+    if (topicEl) topicEl.textContent = '';
+    if (voteButtons) voteButtons.innerHTML = '';
+    if (voteStatus) voteStatus.textContent = '';
+    if (reversalInput) reversalInput.value = '';
 
     setStatus('wordwolf-status', '');
   }
@@ -391,21 +391,21 @@ function resetTabState(tab) {
   if (tab === 'asama') {
     stopAsamaPolling();
 
-    state.asama.phase       = 'setup';
-    state.asama.keyword     = '';
-    state.asama.round       = 1;
-    state.asama.playerName  = '';
-    state.asama.myAnswer    = '';
-    state.asama.topic       = '';
-    state.asama.submitted   = false;
+    state.asama.phase = 'setup';
+    state.asama.keyword = '';
+    state.asama.round = 1;
+    state.asama.playerName = '';
+    state.asama.myAnswer = '';
+    state.asama.topic = '';
+    state.asama.submitted = false;
     state.asama.answerCount = 0;
-    state.asama.answers     = [];
+    state.asama.answers = [];
 
-    const setupEl  = document.getElementById('am-setup');
-    const waitEl   = document.getElementById('am-waiting');
+    const setupEl = document.getElementById('am-setup');
+    const waitEl = document.getElementById('am-waiting');
     const resultEl = document.getElementById('am-result');
-    if (setupEl)  setupEl.hidden  = false;
-    if (waitEl)   waitEl.hidden   = true;
+    if (setupEl) setupEl.hidden = false;
+    if (waitEl) waitEl.hidden = true;
     if (resultEl) resultEl.hidden = true;
 
     const topicSection = document.getElementById('am-topic-section');
@@ -506,7 +506,7 @@ function initEnglishGame() {
 // ============================================================
 
 function initTurtleGame() {
-  const btnDraw   = document.getElementById('btn-draw-turtle');
+  const btnDraw = document.getElementById('btn-draw-turtle');
   const btnReveal = document.getElementById('btn-reveal-turtle');
   if (!btnDraw || !btnReveal) return;
 
@@ -518,7 +518,7 @@ function initTurtleGame() {
     }
 
     const picked = questions[Math.floor(Math.random() * questions.length)];
-    state.turtle.current          = picked;
+    state.turtle.current = picked;
     state.turtle.questionRevealed = true;
 
     // 問題文エリアを更新
@@ -627,26 +627,26 @@ function showWolfFinalResult(type) {
 
   // 詳細セット
   const el = (id) => document.getElementById(id);
-  if (el('ww-final-wolf-num'))  el('ww-final-wolf-num').textContent  = `${wolfPlayer}番`;
-  if (el('ww-final-citizen'))   el('ww-final-citizen').textContent   = citizenTopic;
+  if (el('ww-final-wolf-num')) el('ww-final-wolf-num').textContent = `${wolfPlayer}番`;
+  if (el('ww-final-citizen')) el('ww-final-citizen').textContent = citizenTopic;
   if (el('ww-final-wolf-topic')) el('ww-final-wolf-topic').textContent = wolfTopic;
 
   // reveal セクションを隠して final を表示
   const revealEl = document.getElementById('ww-reveal-section');
-  const finalEl  = document.getElementById('ww-final-section');
+  const finalEl = document.getElementById('ww-final-section');
   if (revealEl) revealEl.hidden = true;
-  if (finalEl)  finalEl.hidden  = false;
+  if (finalEl) finalEl.hidden = false;
 
   state.wordwolf.phase = 'result';
 }
 
 function initWordWolfGame() {
-  const btnCheck    = document.getElementById('btn-check-wordwolf');
-  const btnVote     = document.getElementById('btn-start-vote');
-  const btnReveal   = document.getElementById('btn-reveal-wolf');
+  const btnCheck = document.getElementById('btn-check-wordwolf');
+  const btnVote = document.getElementById('btn-start-vote');
+  const btnReveal = document.getElementById('btn-reveal-wolf');
   const btnReversal = document.getElementById('btn-submit-reversal');
-  const btnFinal    = document.getElementById('btn-show-final');
-  const btnReset    = document.getElementById('btn-ww-reset');
+  const btnFinal = document.getElementById('btn-show-final');
+  const btnReset = document.getElementById('btn-ww-reset');
   if (!btnCheck) return;
 
   // ── 役割を確認する ──────────────────────────────────────────
@@ -657,9 +657,9 @@ function initWordWolfGame() {
     }
 
     const keyword = document.getElementById('ww-keyword').value.trim();
-    const round   = parseInt(document.getElementById('ww-round').value, 10);
-    const myNum   = parseInt(document.getElementById('ww-mynum').value, 10);
-    const total   = parseInt(document.getElementById('ww-total').value, 10);
+    const round = parseInt(document.getElementById('ww-round').value, 10);
+    const myNum = parseInt(document.getElementById('ww-mynum').value, 10);
+    const total = parseInt(document.getElementById('ww-total').value, 10);
 
     if (!keyword) {
       setStatus('wordwolf-status', '合言葉を入力してください', 'error'); return;
@@ -675,14 +675,14 @@ function initWordWolfGame() {
     }
 
     // ─── シード付き乱数 ───────────────────────────────────────
-    const seed       = djb2Hash(keyword + String(round));
-    const random     = mulberry32(seed);
+    const seed = djb2Hash(keyword + String(round));
+    const random = mulberry32(seed);
     const topicIndex = Math.floor(random() * topics.length);
     const wolfPlayer = Math.floor(random() * total) + 1;
     // ─────────────────────────────────────────────────────────
 
-    const picked  = topics[topicIndex];
-    const isWolf  = (myNum === wolfPlayer);
+    const picked = topics[topicIndex];
+    const isWolf = (myNum === wolfPlayer);
     const myTopic = isWolf ? picked.wolf : picked.citizen;
 
     state.wordwolf.result = {
@@ -690,7 +690,7 @@ function initWordWolfGame() {
       myTopic,
       wolfPlayer,
       citizenTopic: picked.citizen,
-      wolfTopic:    picked.wolf,
+      wolfTopic: picked.wolf,
     };
     state.wordwolf.myNum = myNum;
     state.wordwolf.total = total;
@@ -736,7 +736,7 @@ function initWordWolfGame() {
       if (!state.wordwolf.result) {
         setStatus('wordwolf-status', '先に「役割を確認する」を押してください', 'error'); return;
       }
-      document.getElementById('ww-setup').hidden       = true;
+      document.getElementById('ww-setup').hidden = true;
       document.getElementById('ww-vote-section').hidden = false;
       state.wordwolf.phase = 'vote';
       renderVoteButtons(state.wordwolf.total, state.wordwolf.myNum);
@@ -749,7 +749,7 @@ function initWordWolfGame() {
     btnReveal.addEventListener('click', () => {
       const { wolfPlayer, isWolf } = state.wordwolf.result;
 
-      document.getElementById('ww-vote-section').hidden   = true;
+      document.getElementById('ww-vote-section').hidden = true;
       document.getElementById('ww-reveal-section').hidden = false;
 
       // ウルフ番号を全員に表示
@@ -821,11 +821,11 @@ async function pollAsamaCount() {
   }
 
   try {
-    const url  = buildGasUrl('getAnswers', {
+    const url = buildGasUrl('getAnswers', {
       keyword: state.asama.keyword,
-      round:   String(state.asama.round),
+      round: String(state.asama.round),
     });
-    const res  = await fetch(url, { redirect: 'follow' });
+    const res = await fetch(url, { redirect: 'follow' });
     const json = await res.json();
     state.asama.answerCount = json.count || 0;
     el.textContent = `現在 ${state.asama.answerCount} 人が回答済み`;
@@ -847,11 +847,11 @@ async function fetchAndShowAnswers() {
     ];
   } else {
     try {
-      const url  = buildGasUrl('getAnswers', {
+      const url = buildGasUrl('getAnswers', {
         keyword: state.asama.keyword,
-        round:   String(state.asama.round),
+        round: String(state.asama.round),
       });
-      const res  = await fetch(url, { redirect: 'follow' });
+      const res = await fetch(url, { redirect: 'follow' });
       const json = await res.json();
       answers = json.answers || [];
     } catch (err) {
@@ -861,10 +861,10 @@ async function fetchAndShowAnswers() {
   }
 
   state.asama.answers = answers;
-  state.asama.phase   = 'result';
+  state.asama.phase = 'result';
 
   document.getElementById('am-waiting').hidden = true;
-  document.getElementById('am-result').hidden  = false;
+  document.getElementById('am-result').hidden = false;
 
   const topicEl = document.getElementById('am-result-topic');
   if (topicEl) topicEl.textContent = `お題: ${state.asama.topic}`;
@@ -892,17 +892,17 @@ async function fetchAndShowAnswers() {
 }
 
 function initAsamaGame() {
-  const btnEnter  = document.getElementById('btn-am-enter');
+  const btnEnter = document.getElementById('btn-am-enter');
   const btnSubmit = document.getElementById('btn-am-submit');
   const btnReveal = document.getElementById('btn-am-reveal');
-  const btnReset  = document.getElementById('btn-am-reset');
+  const btnReset = document.getElementById('btn-am-reset');
   if (!btnEnter) return;
 
   // ── 入室する ─────────────────────────────────────────────────
   btnEnter.addEventListener('click', () => {
     const keyword = document.getElementById('am-keyword').value.trim();
-    const round   = parseInt(document.getElementById('am-round').value, 10);
-    const name    = document.getElementById('am-name').value.trim();
+    const round = parseInt(document.getElementById('am-round').value, 10);
+    const name = document.getElementById('am-name').value.trim();
 
     if (!keyword) {
       setStatus('asama-status', '合言葉を入力してください', 'error'); return;
@@ -920,19 +920,19 @@ function initAsamaGame() {
     }
 
     // ワードウルフと同じシード付き乱数でお題を決定（全員が同じお題になる）
-    const seed   = djb2Hash(keyword + String(round));
+    const seed = djb2Hash(keyword + String(round));
     const random = mulberry32(seed);
-    const index  = Math.floor(random() * topics.length);
-    const topic  = topics[index].question;
+    const index = Math.floor(random() * topics.length);
+    const topic = topics[index].question;
 
-    state.asama.keyword    = keyword;
-    state.asama.round      = round;
+    state.asama.keyword = keyword;
+    state.asama.round = round;
     state.asama.playerName = name;
-    state.asama.topic      = topic;
-    state.asama.phase      = 'answering';
+    state.asama.topic = topic;
+    state.asama.phase = 'answering';
 
     document.getElementById('am-topic-text').textContent = topic;
-    document.getElementById('am-topic-section').hidden   = false;
+    document.getElementById('am-topic-section').hidden = false;
     btnEnter.disabled = true;
     setStatus('asama-status', '');
   });
@@ -952,15 +952,15 @@ function initAsamaGame() {
         try {
           // POST + Content-Type: text/plain で preflight を発生させずに送信
           // GAS 側は doPost で e.postData.contents を JSON.parse して受け取る
-          const res  = await fetch(GAS_URL, {
-            method:   'POST',
-            headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
-            body:     JSON.stringify({
-              action:  'submitAnswer',
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'submitAnswer',
               keyword: state.asama.keyword,
-              round:   String(state.asama.round),
-              name:    state.asama.playerName,
-              answer:  answer,
+              round: String(state.asama.round),
+              name: state.asama.playerName,
+              answer: answer,
             }),
             redirect: 'follow',
           });
@@ -977,11 +977,11 @@ function initAsamaGame() {
         }
       }
 
-      state.asama.myAnswer  = answer;
+      state.asama.myAnswer = answer;
       state.asama.submitted = true;
-      state.asama.phase     = 'waiting';
+      state.asama.phase = 'waiting';
 
-      document.getElementById('am-setup').hidden   = true;
+      document.getElementById('am-setup').hidden = true;
       document.getElementById('am-waiting').hidden = false;
 
       const noteEl = document.getElementById('am-my-answer-note');
