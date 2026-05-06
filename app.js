@@ -414,8 +414,17 @@ function resetTabState(tab) {
     const enterBtn = document.getElementById('btn-am-enter');
     if (enterBtn) enterBtn.disabled = false;
 
+    const submitBtn = document.getElementById('btn-am-submit');
+    if (submitBtn) submitBtn.disabled = false;
+
     const answerInput = document.getElementById('am-answer-input');
     if (answerInput) answerInput.value = '';
+
+    const countStatus = document.getElementById('am-count-status');
+    if (countStatus) countStatus.textContent = '回答数を確認中...';
+
+    const myAnswerNote = document.getElementById('am-my-answer-note');
+    if (myAnswerNote) myAnswerNote.textContent = '';
 
     setStatus('asama-status', '');
   }
