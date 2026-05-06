@@ -950,13 +950,20 @@ function initAsamaGame() {
 
       if (!isDummyMode()) {
         try {
-          const url  = buildGasUrl('submitAnswer', {
-            keyword: state.asama.keyword,
-            round:   String(state.asama.round),
-            name:    state.asama.playerName,
-            answer:  answer,
+          // POST + Content-Type: text/plain で preflight を発生させずに送信
+          // GAS 側は doPost で e.postData.contents を JSON.parse して受け取る
+          const res  = await fetch(GAS_URL, {
+            method:   'POST',
+            headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
+            body:     JSON.stringify({
+              action:  'submitAnswer',
+              keyword: state.asama.keyword,
+              round:   String(state.asama.round),
+              name:    state.asama.playerName,
+              answer:  answer,
+            }),
+            redirect: 'follow',
           });
-          const res  = await fetch(url, { redirect: 'follow' });
           const json = await res.json();
           if (!json.ok) {
             setStatus('asama-status', '送信エラー: ' + (json.error || ''), 'error');

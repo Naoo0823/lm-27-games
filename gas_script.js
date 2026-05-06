@@ -15,21 +15,37 @@ var SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // ← ここを書き換える
 
 // ──────────────────────────────────────────────────────────────
 // エントリーポイント
-// GETパラメータ action で処理を振り分ける（POST CORS問題を回避）
+//
+// GET  : ゲームデータ取得 (action なし) / 回答一覧取得 (action=getAnswers)
+// POST : 回答送信 (body の action=submitAnswer)
+//        Content-Type: text/plain で送信することで preflight を回避
 // ──────────────────────────────────────────────────────────────
 
 function doGet(e) {
   try {
     var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
 
-    if (action === 'submitAnswer') return handleSubmitAnswer(e.parameter);
-    if (action === 'getAnswers')   return handleGetAnswers(e.parameter);
+    if (action === 'getAnswers') return handleGetAnswers(e.parameter);
 
     // デフォルト: 全ゲームデータを返す（既存動作と互換）
     return handleGetGameData();
 
   } catch (err) {
     return jsonOut({ error: err.message });
+  }
+}
+
+function doPost(e) {
+  try {
+    // Content-Type: text/plain で送られた JSON ボディをパース
+    var body   = JSON.parse(e.postData.contents);
+    var action = body.action || '';
+
+    if (action === 'submitAnswer') return handleSubmitAnswer(body);
+
+    return jsonOut({ ok: false, error: '不明なアクション: ' + action });
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.message });
   }
 }
 
