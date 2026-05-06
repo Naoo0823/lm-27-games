@@ -22,6 +22,9 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-wordwolf" data-tab="wordwolf">
         ワードウルフ
       </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-asama" data-tab="asama">
+        朝までそれ正解
+      </button>
     </nav>
   </header>
 
@@ -238,6 +241,100 @@
       </div><!-- /#ww-final-section -->
 
       <p class="status-message" id="wordwolf-status" role="status"></p>
+    </section>
+
+    <!-- ===== ゲームD: 朝までそれ正解 ===== -->
+    <section id="panel-asama" class="game-panel" role="tabpanel" aria-labelledby="tab-asama" hidden>
+
+      <h2>朝までそれ正解</h2>
+      <p class="game-description">
+        全員が同じお題に回答。みんなの答えを見比べて盛り上がろう！
+      </p>
+
+      <!-- ─── フェーズ1: 入室 + 回答入力 ─── -->
+      <div id="am-setup">
+
+        <div class="wordwolf-form">
+          <div class="form-group">
+            <label for="am-keyword">合言葉（全員共通）</label>
+            <input type="text" id="am-keyword" placeholder="例: こんにゃく" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="form-group">
+            <label for="am-round">回戦数</label>
+            <input type="number" id="am-round" min="1" max="99" value="1">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1">
+            <label for="am-name">あなたの名前</label>
+            <input type="text" id="am-name" placeholder="例: 田中" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+
+        <button class="btn btn-primary ww-ready-btn" id="btn-am-enter">入室する</button>
+
+        <!-- お題・回答入力（入室後に表示） -->
+        <div id="am-topic-section" hidden>
+
+          <div class="ww-section-divider"></div>
+
+          <!-- ワードウルフ「ウルフ番号発表」カードと同じ構造 -->
+          <div class="ww-wolf-announcement">
+            <span class="ww-topic-label">お題</span>
+            <p class="ww-topic-value" id="am-topic-text"></p>
+          </div>
+
+          <!-- 回答テキストエリア（form-group の共通スタイルを再利用） -->
+          <div class="form-group">
+            <label for="am-answer-input">あなたの回答</label>
+            <textarea id="am-answer-input" class="am-answer-input"
+              placeholder="自由に回答を入力してください..."></textarea>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" id="btn-am-submit">回答を送信する</button>
+          </div>
+
+        </div>
+
+      </div><!-- /#am-setup -->
+
+      <!-- ─── フェーズ2: 待機 ─── -->
+      <div id="am-waiting" hidden>
+
+        <!-- ワードウルフ「投票エリア」カードと同じ構造 -->
+        <div class="ww-vote-area">
+          <div class="ww-discussion-header">
+            <span class="ww-discussion-dot"></span>
+            回答待機中
+          </div>
+          <p class="ww-vote-instruction" id="am-count-status">回答数を確認中...</p>
+          <p class="ww-vote-status" id="am-my-answer-note"></p>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-am-reveal">全員の回答を見る</button>
+        </div>
+
+      </div><!-- /#am-waiting -->
+
+      <!-- ─── フェーズ3: 結果 ─── -->
+      <div id="am-result" hidden aria-live="polite">
+
+        <!-- ワードウルフ「ウルフ番号発表」カードと同じ構造 -->
+        <div class="ww-wolf-announcement">
+          <p class="ww-announce-sub">みんなの回答</p>
+          <p class="ww-announce-sub" id="am-result-topic"></p>
+        </div>
+
+        <!-- JS が question-display カードを挿入 -->
+        <div id="am-answers-list" class="am-answers-list"></div>
+
+        <div class="btn-group" style="margin-top:20px">
+          <button class="btn btn-ghost" id="btn-am-reset">もう一回プレイ</button>
+        </div>
+
+      </div><!-- /#am-result -->
+
+      <p class="status-message" id="asama-status" role="status"></p>
+
     </section>
 
   </main>

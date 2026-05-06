@@ -41,6 +41,14 @@ const DUMMY_DATA = {
     { citizen: '夏', wolf: '冬' },
     { citizen: 'ラーメン', wolf: 'うどん' },
     { citizen: '映画館', wolf: 'カラオケ' },
+  ],
+  asama: [
+    { question: '無人島に1つだけ持っていくなら？' },
+    { question: '自分を動物に例えると？' },
+    { question: '生まれ変わったら何になりたい？' },
+    { question: '小学生の自分に一言アドバイスするなら？' },
+    { question: '好きな季節とその理由は？' },
+    { question: '人生で一番楽しかった思い出は？' },
   ]
 };
 
@@ -70,6 +78,19 @@ const state = {
     phase: 'setup',   // 'setup' | 'playing' | 'result'
     myNum: 0,
     total: 0,
+  },
+
+  asama: {
+    phase:       'setup',   // 'setup' | 'answering' | 'waiting' | 'result'
+    keyword:     '',
+    round:       1,
+    playerName:  '',
+    myAnswer:    '',
+    topic:       '',
+    submitted:   false,
+    pollTimer:   null,
+    answerCount: 0,
+    answers:     [],
   }
 };
 
@@ -122,6 +143,26 @@ function setStatus(elementId, message, type = 'normal') {
 }
 
 // ============================================================
+// GAS URLビルダー・XSSエスケープ
+// ============================================================
+
+function buildGasUrl(action, params) {
+  if (isDummyMode()) return null;
+  const qs = Object.entries(params)
+    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+    .join('&');
+  return GAS_URL + '?action=' + encodeURIComponent(action) + '&' + qs;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ============================================================
 // データ取得
 // ============================================================
 
@@ -145,6 +186,7 @@ async function loadData() {
     if (!json.english || !json.turtle || !json.wordwolf) {
       throw new Error('レスポンスの形式が不正です');
     }
+    if (!json.asama) json.asama = DUMMY_DATA.asama; // 旧GASとの後方互換
     state.data = json;
     state.usingDummy = false;
     state.fetchError = false;
@@ -344,6 +386,38 @@ function resetTabState(tab) {
     if (reversalInput) reversalInput.value     = '';
 
     setStatus('wordwolf-status', '');
+  }
+
+  if (tab === 'asama') {
+    stopAsamaPolling();
+
+    state.asama.phase       = 'setup';
+    state.asama.keyword     = '';
+    state.asama.round       = 1;
+    state.asama.playerName  = '';
+    state.asama.myAnswer    = '';
+    state.asama.topic       = '';
+    state.asama.submitted   = false;
+    state.asama.answerCount = 0;
+    state.asama.answers     = [];
+
+    const setupEl  = document.getElementById('am-setup');
+    const waitEl   = document.getElementById('am-waiting');
+    const resultEl = document.getElementById('am-result');
+    if (setupEl)  setupEl.hidden  = false;
+    if (waitEl)   waitEl.hidden   = true;
+    if (resultEl) resultEl.hidden = true;
+
+    const topicSection = document.getElementById('am-topic-section');
+    if (topicSection) topicSection.hidden = true;
+
+    const enterBtn = document.getElementById('btn-am-enter');
+    if (enterBtn) enterBtn.disabled = false;
+
+    const answerInput = document.getElementById('am-answer-input');
+    if (answerInput) answerInput.value = '';
+
+    setStatus('asama-status', '');
   }
 }
 
@@ -722,6 +796,212 @@ function initWordWolfGame() {
 }
 
 // ============================================================
+// ゲームD: 朝までそれ正解（リアルタイム同期）
+// ============================================================
+
+function stopAsamaPolling() {
+  if (state.asama.pollTimer !== null) {
+    clearInterval(state.asama.pollTimer);
+    state.asama.pollTimer = null;
+  }
+}
+
+function startAsamaPolling() {
+  pollAsamaCount();
+  state.asama.pollTimer = setInterval(pollAsamaCount, 3000);
+}
+
+async function pollAsamaCount() {
+  const el = document.getElementById('am-count-status');
+  if (!el) return;
+
+  if (isDummyMode()) {
+    el.textContent = '（ダミーモード）現在 1 人が回答済み';
+    return;
+  }
+
+  try {
+    const url  = buildGasUrl('getAnswers', {
+      keyword: state.asama.keyword,
+      round:   String(state.asama.round),
+    });
+    const res  = await fetch(url, { redirect: 'follow' });
+    const json = await res.json();
+    state.asama.answerCount = json.count || 0;
+    el.textContent = `現在 ${state.asama.answerCount} 人が回答済み`;
+  } catch (err) {
+    el.textContent = '回答数の取得に失敗しました';
+  }
+}
+
+async function fetchAndShowAnswers() {
+  setStatus('asama-status', '回答を取得中...', 'loading');
+
+  let answers = [];
+
+  if (isDummyMode()) {
+    answers = [
+      { name: state.asama.playerName || '自分', answer: state.asama.myAnswer || '（未送信）' },
+      { name: 'デモA', answer: 'これはデモ回答です' },
+      { name: 'デモB', answer: '別のデモ回答' },
+    ];
+  } else {
+    try {
+      const url  = buildGasUrl('getAnswers', {
+        keyword: state.asama.keyword,
+        round:   String(state.asama.round),
+      });
+      const res  = await fetch(url, { redirect: 'follow' });
+      const json = await res.json();
+      answers = json.answers || [];
+    } catch (err) {
+      setStatus('asama-status', '回答の取得に失敗しました', 'error');
+      return;
+    }
+  }
+
+  state.asama.answers = answers;
+  state.asama.phase   = 'result';
+
+  document.getElementById('am-waiting').hidden = true;
+  document.getElementById('am-result').hidden  = false;
+
+  const topicEl = document.getElementById('am-result-topic');
+  if (topicEl) topicEl.textContent = `お題: ${state.asama.topic}`;
+
+  const listEl = document.getElementById('am-answers-list');
+  if (listEl) {
+    listEl.innerHTML = '';
+    if (answers.length === 0) {
+      listEl.innerHTML =
+        '<p style="color:var(--text-secondary);text-align:center;padding:24px 0">まだ回答がありません</p>';
+    } else {
+      // ウミガメのスープ「問題文エリア」と同じ question-display カードを再利用
+      answers.forEach(({ name, answer }) => {
+        const card = document.createElement('div');
+        card.className = 'question-display';
+        card.innerHTML =
+          `<span class="answer-label">${escapeHtml(name)}</span>` +
+          `<p class="answer-value">${escapeHtml(answer)}</p>`;
+        listEl.appendChild(card);
+      });
+    }
+  }
+
+  setStatus('asama-status', '');
+}
+
+function initAsamaGame() {
+  const btnEnter  = document.getElementById('btn-am-enter');
+  const btnSubmit = document.getElementById('btn-am-submit');
+  const btnReveal = document.getElementById('btn-am-reveal');
+  const btnReset  = document.getElementById('btn-am-reset');
+  if (!btnEnter) return;
+
+  // ── 入室する ─────────────────────────────────────────────────
+  btnEnter.addEventListener('click', () => {
+    const keyword = document.getElementById('am-keyword').value.trim();
+    const round   = parseInt(document.getElementById('am-round').value, 10);
+    const name    = document.getElementById('am-name').value.trim();
+
+    if (!keyword) {
+      setStatus('asama-status', '合言葉を入力してください', 'error'); return;
+    }
+    if (isNaN(round) || round < 1) {
+      setStatus('asama-status', '回戦数は1以上の整数を入力してください', 'error'); return;
+    }
+    if (!name) {
+      setStatus('asama-status', '名前を入力してください', 'error'); return;
+    }
+
+    const topics = state.data?.asama;
+    if (!topics || topics.length === 0) {
+      setStatus('asama-status', 'お題データがありません', 'error'); return;
+    }
+
+    // ワードウルフと同じシード付き乱数でお題を決定（全員が同じお題になる）
+    const seed   = djb2Hash(keyword + String(round));
+    const random = mulberry32(seed);
+    const index  = Math.floor(random() * topics.length);
+    const topic  = topics[index].question;
+
+    state.asama.keyword    = keyword;
+    state.asama.round      = round;
+    state.asama.playerName = name;
+    state.asama.topic      = topic;
+    state.asama.phase      = 'answering';
+
+    document.getElementById('am-topic-text').textContent = topic;
+    document.getElementById('am-topic-section').hidden   = false;
+    btnEnter.disabled = true;
+    setStatus('asama-status', '');
+  });
+
+  // ── 回答を送信する ───────────────────────────────────────────
+  if (btnSubmit) {
+    btnSubmit.addEventListener('click', async () => {
+      const answer = document.getElementById('am-answer-input').value.trim();
+      if (!answer) {
+        setStatus('asama-status', '回答を入力してください', 'error'); return;
+      }
+
+      btnSubmit.disabled = true;
+      setStatus('asama-status', '送信中...', 'loading');
+
+      if (!isDummyMode()) {
+        try {
+          const url  = buildGasUrl('submitAnswer', {
+            keyword: state.asama.keyword,
+            round:   String(state.asama.round),
+            name:    state.asama.playerName,
+            answer:  answer,
+          });
+          const res  = await fetch(url, { redirect: 'follow' });
+          const json = await res.json();
+          if (!json.ok) {
+            setStatus('asama-status', '送信エラー: ' + (json.error || ''), 'error');
+            btnSubmit.disabled = false;
+            return;
+          }
+        } catch (err) {
+          setStatus('asama-status', '送信に失敗しました（通信エラー）', 'error');
+          btnSubmit.disabled = false;
+          return;
+        }
+      }
+
+      state.asama.myAnswer  = answer;
+      state.asama.submitted = true;
+      state.asama.phase     = 'waiting';
+
+      document.getElementById('am-setup').hidden   = true;
+      document.getElementById('am-waiting').hidden = false;
+
+      const noteEl = document.getElementById('am-my-answer-note');
+      if (noteEl) noteEl.textContent = `あなたの回答: ${answer}`;
+
+      setStatus('asama-status', '');
+      startAsamaPolling();
+    });
+  }
+
+  // ── 全員の回答を見る ─────────────────────────────────────────
+  if (btnReveal) {
+    btnReveal.addEventListener('click', async () => {
+      stopAsamaPolling();
+      await fetchAndShowAnswers();
+    });
+  }
+
+  // ── もう一回プレイ ────────────────────────────────────────────
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      resetTabState('asama');
+    });
+  }
+}
+
+// ============================================================
 // 初期化
 // ============================================================
 
@@ -731,7 +1011,7 @@ async function init() {
   initTabs();
 
   // ローディング表示
-  ['english', 'turtle', 'wordwolf'].forEach(tab => {
+  ['english', 'turtle', 'wordwolf', 'asama'].forEach(tab => {
     setStatus(tab + '-status', 'データを読み込み中...', 'loading');
   });
 
@@ -739,7 +1019,7 @@ async function init() {
   await loadData();
 
   // ローディング解除
-  ['english', 'turtle', 'wordwolf'].forEach(tab => {
+  ['english', 'turtle', 'wordwolf', 'asama'].forEach(tab => {
     setStatus(tab + '-status', '');
   });
 
@@ -750,6 +1030,7 @@ async function init() {
   initEnglishGame();
   initTurtleGame();
   initWordWolfGame();
+  initAsamaGame();
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -61,6 +61,13 @@ header {
   padding: 0 24px;
   max-width: 760px;
   margin: 0 auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tab-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
@@ -320,7 +327,8 @@ header {
   letter-spacing: 0.02em;
 }
 
-.form-group input {
+.form-group input,
+.form-group textarea {
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid var(--border);
@@ -333,12 +341,14 @@ header {
   outline: none;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
 
-.form-group input::placeholder {
+.form-group input::placeholder,
+.form-group textarea::placeholder {
   color: #c4c9d4;
 }
 
@@ -974,4 +984,24 @@ header {
   .modal-box {
     padding: 28px 22px;
   }
+}
+
+/* ============================================================
+   朝までそれ正解 — テキストエリアと回答リストのみ最小定義
+   カード・ボタン・フォームは既存の共通クラスを再利用
+   ============================================================ */
+
+/* textarea に form-group input と同じ外観を与えるための追加プロパティのみ */
+.am-answer-input {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+
+/* 回答カード間の縦スペーシングのみ */
+.am-answers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 4px;
 }
