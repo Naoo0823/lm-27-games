@@ -1014,8 +1014,14 @@ function initAsamaGame() {
     btnReset.addEventListener('click', () => {
       const nextRound = state.asama.round + 1;
       resetTabState('asama');
+
       const roundInput = document.getElementById('am-round');
       if (roundInput) roundInput.value = nextRound;
+
+      // 合言葉・名前が入力済みなら自動入室（既存の入室ハンドラをそのまま呼ぶ）
+      const keyword = document.getElementById('am-keyword').value.trim();
+      const name    = document.getElementById('am-name').value.trim();
+      if (keyword && name) btnEnter.click();
     });
   }
 }
