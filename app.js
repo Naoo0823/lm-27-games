@@ -1003,7 +1003,10 @@ function initAsamaGame() {
   // ── もう一回プレイ ────────────────────────────────────────────
   if (btnReset) {
     btnReset.addEventListener('click', () => {
+      const nextRound = state.asama.round + 1;
       resetTabState('asama');
+      const roundInput = document.getElementById('am-round');
+      if (roundInput) roundInput.value = nextRound;
     });
   }
 }
