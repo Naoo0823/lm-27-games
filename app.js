@@ -7,7 +7,7 @@
 // GAS をデプロイして取得した「ウェブアプリURL」を貼り付けてください。
 // 未設定のままでもダミーデータで動作します。
 // ============================================================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwxFNA02dbnD0AxjvwyBIJpgkv6oJRWudQ9uI8pf66eCS_lh0LHrdz333PtHwxc2rjT/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2sjDWooVq1x0u9WuWa2YHXpcyYR-iBNImn3en29b_MRpA7izwMYdSxSL59yNTuAVI/exec';
 // ============================================================
 
 // ---------- ダミーデータ（GAS未設定 or フェッチ失敗時に使用） ----------
@@ -696,7 +696,7 @@ async function pollWolfVotes() {
 
     state.wordwolf.voteCount = json.voteCount || 0;
     if (json.players) state.wordwolf.players = json.players;
-    if (json.votes)   state.wordwolf.allVotes = json.votes;
+    if (json.votes) state.wordwolf.allVotes = json.votes;
 
     const voteCount = state.wordwolf.voteCount;
     syncEl.textContent = `現在 ${voteCount} / ${total} 人が投票済み`;
@@ -761,7 +761,7 @@ async function fetchAndShowVoteResult() {
       const res = await fetch(url, { redirect: 'follow' });
       const json = await res.json();
       if (json.players) state.wordwolf.players = json.players;
-      if (json.votes)   state.wordwolf.allVotes = json.votes;
+      if (json.votes) state.wordwolf.allVotes = json.votes;
     } catch { /* use cached data */ }
   }
 
@@ -868,9 +868,9 @@ function initWordWolfGame() {
     }
 
     const keyword = document.getElementById('ww-keyword').value.trim();
-    const round   = parseInt(document.getElementById('ww-round').value, 10);
-    const name    = document.getElementById('ww-name').value.trim();
-    const total   = parseInt(document.getElementById('ww-total').value, 10);
+    const round = parseInt(document.getElementById('ww-round').value, 10);
+    const name = document.getElementById('ww-name').value.trim();
+    const total = parseInt(document.getElementById('ww-total').value, 10);
 
     if (!keyword) {
       setStatus('wordwolf-status', '合言葉を入力してください', 'error'); return;
@@ -916,11 +916,11 @@ function initWordWolfGame() {
       citizenTopic: picked.citizen,
       wolfTopic: picked.wolf,
     };
-    state.wordwolf.myName  = name;
-    state.wordwolf.myNum   = myNum;
-    state.wordwolf.total   = total;
+    state.wordwolf.myName = name;
+    state.wordwolf.myNum = myNum;
+    state.wordwolf.total = total;
     state.wordwolf.keyword = keyword;
-    state.wordwolf.round   = round;
+    state.wordwolf.round = round;
 
     setStatus('wordwolf-status', '');
 
@@ -1017,7 +1017,7 @@ function initWordWolfGame() {
 
       // ウルフ名を全員に表示
       const { wolfPlayer, isWolf } = state.wordwolf.result;
-      const wolfObj  = state.wordwolf.players.find(p => p.slot === wolfPlayer);
+      const wolfObj = state.wordwolf.players.find(p => p.slot === wolfPlayer);
       const wolfName = wolfObj?.name || `プレイヤー${wolfPlayer}`;
       const numEl = document.getElementById('ww-announce-wolf-num');
       if (numEl) numEl.textContent = wolfName;
@@ -1056,17 +1056,17 @@ function initWordWolfGame() {
   // ── もう一回プレイ ─────────────────────────────────────────
   if (btnReset) {
     btnReset.addEventListener('click', () => {
-      const nextRound    = state.wordwolf.round + 1;
+      const nextRound = state.wordwolf.round + 1;
       const savedKeyword = state.wordwolf.keyword;
-      const savedName    = state.wordwolf.myName;
-      const savedTotal   = state.wordwolf.total;
+      const savedName = state.wordwolf.myName;
+      const savedTotal = state.wordwolf.total;
 
       resetTabState('wordwolf');
 
       const keywordInput = document.getElementById('ww-keyword');
-      const roundInput   = document.getElementById('ww-round');
-      const nameInput    = document.getElementById('ww-name');
-      const totalInput   = document.getElementById('ww-total');
+      const roundInput = document.getElementById('ww-round');
+      const nameInput = document.getElementById('ww-name');
+      const totalInput = document.getElementById('ww-total');
       if (keywordInput && savedKeyword) keywordInput.value = savedKeyword;
       if (roundInput) roundInput.value = nextRound;
       if (nameInput && savedName) nameInput.value = savedName;
@@ -1291,7 +1291,7 @@ function initAsamaGame() {
 
       // 合言葉・名前が入力済みなら自動入室（既存の入室ハンドラをそのまま呼ぶ）
       const keyword = document.getElementById('am-keyword').value.trim();
-      const name    = document.getElementById('am-name').value.trim();
+      const name = document.getElementById('am-name').value.trim();
       if (keyword && name) btnEnter.click();
     });
   }
