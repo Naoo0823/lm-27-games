@@ -26,6 +26,7 @@ function doGet(e) {
     var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
 
     if (action === 'getAnswers') return handleGetAnswers(e.parameter);
+    if (action === 'getVotes')   return handleGetVotes(e.parameter);
 
     // デフォルト: 全ゲームデータを返す（既存動作と互換）
     return handleGetGameData();
@@ -42,6 +43,8 @@ function doPost(e) {
     var action = body.action || '';
 
     if (action === 'submitAnswer') return handleSubmitAnswer(body);
+    if (action === 'joinRoom')     return handleJoinRoom(body);
+    if (action === 'submitVote')   return handleSubmitVote(body);
 
     return jsonOut({ ok: false, error: '不明なアクション: ' + action });
   } catch (err) {
@@ -124,8 +127,148 @@ function handleGetAnswers(params) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// ワードウルフ: 入室登録（action=joinRoom）
+// パラメータ: keyword, round, name, total
+// 同一 keyword+round+name なら既存スロット番号を返す
+// ──────────────────────────────────────────────────────────────
+
+function handleJoinRoom(params) {
+  var keyword = String(params.keyword || '').trim();
+  var round   = String(params.round   || '1').trim();
+  var name    = String(params.name    || '').trim();
+  var total   = parseInt(params.total || '0', 10);
+
+  if (!keyword || !name) {
+    return jsonOut({ ok: false, error: 'パラメータが不足しています' });
+  }
+  if (isNaN(total) || total < 2) {
+    return jsonOut({ ok: false, error: '総人数が不正です' });
+  }
+
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getOrCreateVotesSheet(ss);
+  var data  = sheet.getDataRange().getValues();
+
+  // 同じ keyword+round+name がすでに存在すれば既存スロットを返す
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === keyword &&
+        String(data[i][1]) === round   &&
+        String(data[i][3]) === name) {
+      return jsonOut({ ok: true, slotNumber: parseInt(data[i][2], 10) });
+    }
+  }
+
+  // この keyword+round の登録数をカウント
+  var count = 0;
+  for (var j = 1; j < data.length; j++) {
+    if (String(data[j][0]) === keyword && String(data[j][1]) === round) {
+      count++;
+    }
+  }
+
+  if (count >= total) {
+    return jsonOut({ ok: false, error: '部屋が満員です（' + total + '人）' });
+  }
+
+  var slotNumber = count + 1;
+  sheet.appendRow([keyword, round, slotNumber, name, '', '', new Date()]);
+  return jsonOut({ ok: true, slotNumber: slotNumber });
+}
+
+// ──────────────────────────────────────────────────────────────
+// ワードウルフ: 投票送信（action=submitVote）
+// パラメータ: keyword, round, voter, votee, role
+// ──────────────────────────────────────────────────────────────
+
+function handleSubmitVote(params) {
+  var keyword = String(params.keyword || '').trim();
+  var round   = String(params.round   || '1').trim();
+  var voter   = String(params.voter   || '').trim();
+  var votee   = String(params.votee   || '').trim();
+  var role    = String(params.role    || '').trim();
+
+  if (!keyword || !voter || !votee) {
+    return jsonOut({ ok: false, error: 'パラメータが不足しています' });
+  }
+
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getOrCreateVotesSheet(ss);
+  var data  = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === keyword &&
+        String(data[i][1]) === round   &&
+        String(data[i][3]) === voter) {
+      sheet.getRange(i + 1, 5).setValue(votee);
+      sheet.getRange(i + 1, 6).setValue(role);
+      sheet.getRange(i + 1, 7).setValue(new Date());
+      return jsonOut({ ok: true });
+    }
+  }
+
+  return jsonOut({ ok: false, error: '投票者が登録されていません。先に入室してください。' });
+}
+
+// ──────────────────────────────────────────────────────────────
+// ワードウルフ: 投票状況取得（action=getVotes）
+// パラメータ: keyword, round
+// 戻り値: { players, votes, voteCount, totalCount }
+// ──────────────────────────────────────────────────────────────
+
+function handleGetVotes(params) {
+  var keyword = String(params.keyword || '').trim();
+  var round   = String(params.round   || '1').trim();
+
+  var ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getOrCreateVotesSheet(ss);
+  var data  = sheet.getDataRange().getValues();
+
+  var players = [];
+  var votes   = [];
+
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === keyword && String(data[i][1]) === round) {
+      var slot  = parseInt(data[i][2], 10);
+      var name  = String(data[i][3]);
+      var votee = String(data[i][4]);
+
+      players.push({ slot: slot, name: name });
+      if (votee) {
+        votes.push({ voter: name, votee: votee });
+      }
+    }
+  }
+
+  players.sort(function(a, b) { return a.slot - b.slot; });
+
+  return jsonOut({
+    players:    players,
+    votes:      votes,
+    voteCount:  votes.length,
+    totalCount: players.length
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
 // ユーティリティ
 // ──────────────────────────────────────────────────────────────
+
+/**
+ * Votes シートを取得または新規作成する
+ * 列構成: キーワード | 回戦数 | スロット | 名前 | 投票先名 | 役職 | タイムスタンプ
+ */
+function getOrCreateVotesSheet(ss) {
+  var sheet = ss.getSheetByName('Votes');
+  if (!sheet) {
+    sheet = ss.insertSheet('Votes');
+    sheet.appendRow(['キーワード', '回戦数', 'スロット', '名前', '投票先名', '役職', 'タイムスタンプ']);
+    sheet.setFrozenRows(1);
+  } else if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['キーワード', '回戦数', 'スロット', '名前', '投票先名', '役職', 'タイムスタンプ']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
 
 /**
  * Answers シートを取得または新規作成する

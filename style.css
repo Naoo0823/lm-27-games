@@ -1005,3 +1005,91 @@ header {
   gap: 12px;
   margin-bottom: 4px;
 }
+
+/* ============================================================
+   ワードウルフ オンライン同期 — 追加スタイル
+   ============================================================ */
+
+.ww-sync-status {
+  margin-top: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  min-height: 20px;
+}
+
+/* 投票結果リスト */
+.ww-vote-list {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.ww-vote-list-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.ww-vote-list-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ww-vote-list-items li {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ww-vote-list-items li:last-child {
+  border-bottom: none;
+}
+
+/* 最多得票者 */
+.ww-top-voted {
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.ww-top-voted-content {
+  background: var(--accent-light);
+  border: 1.5px solid #93c5fd;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+}
+
+.ww-top-voted-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.ww-top-voted-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 4px 0;
+}
+
+.ww-top-voted-role {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 4px;
+}

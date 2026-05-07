@@ -103,7 +103,7 @@
 
       <h2>ワードウルフ</h2>
       <p class="game-description">
-        全員が同じ「合言葉＋回戦数」を入力すると、サーバーなしで役割が同期されます。
+        合言葉と名前を入力して入室。全員そろったら投票でウルフを探し出せ！
       </p>
 
       <!-- ─── フェーズ1: 役割確認 ─── -->
@@ -118,9 +118,9 @@
             <label for="ww-round">回戦数</label>
             <input type="number" id="ww-round" min="1" max="99" value="1">
           </div>
-          <div class="form-group">
-            <label for="ww-mynum">自分のプレイヤー番号</label>
-            <input type="number" id="ww-mynum" min="1" value="1">
+          <div class="form-group" style="grid-column: 1 / -1">
+            <label for="ww-name">あなたの名前</label>
+            <input type="text" id="ww-name" placeholder="例: 田中" autocomplete="off" spellcheck="false">
           </div>
           <div class="form-group">
             <label for="ww-total">総人数</label>
@@ -171,12 +171,13 @@
           <p class="ww-vote-instruction">怪しいと思うプレイヤーに投票してください</p>
           <div class="ww-vote-buttons" id="ww-vote-buttons" role="group" aria-label="投票先選択"></div>
           <p class="ww-vote-status" id="ww-vote-status" role="status" aria-live="polite"></p>
+          <p class="ww-sync-status" id="ww-sync-status" role="status" aria-live="polite"></p>
         </div>
 
         <div class="ww-section-divider"></div>
 
         <div class="btn-group">
-          <button class="btn btn-primary" id="btn-reveal-wolf">正解を確認する</button>
+          <button class="btn btn-primary" id="btn-reveal-wolf" disabled>正解を確認する</button>
         </div>
 
       </div><!-- /#ww-vote-section -->
@@ -184,7 +185,13 @@
       <!-- ─── フェーズ3: ウルフ発表 ─── -->
       <div id="ww-reveal-section" hidden aria-live="polite">
 
-        <!-- 全員が見る: ウルフ番号発表 -->
+        <!-- 投票結果リスト -->
+        <div id="ww-vote-list" class="ww-vote-list" hidden></div>
+
+        <!-- 最多得票者 -->
+        <div id="ww-top-voted" class="ww-top-voted" hidden></div>
+
+        <!-- 全員が見る: ウルフ発表 -->
         <div class="ww-wolf-announcement">
           <p class="ww-announce-sub">今回のウルフは</p>
           <p class="ww-announce-num" id="ww-announce-wolf-num"></p>

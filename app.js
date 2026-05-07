@@ -74,10 +74,17 @@ const state = {
   wordwolf: {
     flipped: false,
     result: null,     // { isWolf, myTopic, wolfPlayer, citizenTopic, wolfTopic }
-    myVote: null,     // 投票先プレイヤー番号
-    phase: 'setup',   // 'setup' | 'playing' | 'result'
-    myNum: 0,
+    myVote: null,     // 投票先プレイヤー名
+    phase: 'setup',   // 'setup' | 'vote' | 'reveal' | 'result'
+    myName: '',
+    myNum: 0,         // GASが割り当てたスロット番号
     total: 0,
+    keyword: '',
+    round: 1,
+    pollTimer: null,
+    voteCount: 0,
+    players: [],      // [{ slot, name }, ...]
+    allVotes: [],     // [{ voter, votee }, ...]
   },
 
   asama: {
@@ -344,12 +351,20 @@ function resetTabState(tab) {
   }
 
   if (tab === 'wordwolf') {
+    stopWolfPolling();
+
     state.wordwolf.flipped = false;
     state.wordwolf.result = null;
     state.wordwolf.myVote = null;
     state.wordwolf.phase = 'setup';
+    state.wordwolf.myName = '';
     state.wordwolf.myNum = 0;
     state.wordwolf.total = 0;
+    state.wordwolf.keyword = '';
+    state.wordwolf.round = 1;
+    state.wordwolf.voteCount = 0;
+    state.wordwolf.players = [];
+    state.wordwolf.allVotes = [];
 
     resetCard('wordwolf-card');
 
@@ -364,8 +379,10 @@ function resetTabState(tab) {
     // ボタン状態リセット
     const btnCheck = document.getElementById('btn-check-wordwolf');
     const btnVote = document.getElementById('btn-start-vote');
+    const btnRevealWolf = document.getElementById('btn-reveal-wolf');
     if (btnCheck) btnCheck.disabled = false;
     if (btnVote) btnVote.disabled = true;
+    if (btnRevealWolf) btnRevealWolf.disabled = true;
 
     // 準備完了セクションをリセット
     const readySection = document.getElementById('ww-ready-section');
@@ -376,14 +393,22 @@ function resetTabState(tab) {
     if (waitingMsg) waitingMsg.hidden = true;
 
     // 入力・表示をクリア
+    const nameInput = document.getElementById('ww-name');
     const topicEl = document.getElementById('ww-topic');
     const voteButtons = document.getElementById('ww-vote-buttons');
     const voteStatus = document.getElementById('ww-vote-status');
+    const syncStatus = document.getElementById('ww-sync-status');
     const reversalInput = document.getElementById('ww-reversal-input');
+    const voteListEl = document.getElementById('ww-vote-list');
+    const topVotedEl = document.getElementById('ww-top-voted');
+    if (nameInput) nameInput.value = '';
     if (topicEl) topicEl.textContent = '';
     if (voteButtons) voteButtons.innerHTML = '';
     if (voteStatus) voteStatus.textContent = '';
+    if (syncStatus) syncStatus.textContent = '';
     if (reversalInput) reversalInput.value = '';
+    if (voteListEl) { voteListEl.hidden = true; voteListEl.innerHTML = ''; }
+    if (topVotedEl) { topVotedEl.hidden = true; topVotedEl.innerHTML = ''; }
 
     setStatus('wordwolf-status', '');
   }
@@ -579,43 +604,220 @@ function initTurtleGame() {
 // ゲームC: ワードウルフ（シード付き乱数で同期）
 // ============================================================
 
-/** 投票ボタンを動的生成する */
-function renderVoteButtons(total, myNum) {
+/** 投票ボタンを名前ベースで動的生成する */
+function renderVoteButtonsByName(players, myName) {
   const container = document.getElementById('ww-vote-buttons');
   if (!container) return;
   container.innerHTML = '';
 
-  for (let i = 1; i <= total; i++) {
+  if (!players || players.length === 0) {
+    container.innerHTML =
+      '<p style="color:var(--text-secondary);font-size:0.9rem">他のプレイヤーが見つかりません。' +
+      'しばらく待ってから再度お試しください。</p>';
+    return;
+  }
+
+  players.forEach(player => {
+    const name = typeof player === 'string' ? player : player.name;
     const btn = document.createElement('button');
     btn.className = 'ww-vote-btn';
-    btn.textContent = `${i}番`;
+    btn.textContent = name;
 
-    if (i === myNum) {
+    if (name === myName) {
       btn.disabled = true;
       btn.classList.add('is-self');
-      btn.setAttribute('aria-label', `${i}番（自分）`);
+      btn.setAttribute('aria-label', `${name}（自分）`);
     } else {
-      btn.setAttribute('aria-label', `${i}番に投票`);
-      btn.addEventListener('click', () => {
+      btn.setAttribute('aria-label', `${name}に投票`);
+      btn.addEventListener('click', async () => {
         if (state.wordwolf.myVote !== null) return;
-        state.wordwolf.myVote = i;
+        state.wordwolf.myVote = name;
         container.querySelectorAll('.ww-vote-btn').forEach(b => { b.disabled = true; });
         btn.classList.add('is-voted');
         btn.disabled = false;
+
         const voteStatus = document.getElementById('ww-vote-status');
         if (voteStatus) {
           voteStatus.textContent =
-            `${i}番に投票しました。準備ができたら「正解を確認する」を押してください。`;
+            `${name}さんに投票しました。全員の投票が揃うまでお待ちください。`;
         }
+
+        const role = state.wordwolf.result.isWolf ? 'wolf' : 'citizen';
+        await submitWolfVote(
+          state.wordwolf.keyword,
+          state.wordwolf.round,
+          state.wordwolf.myName,
+          name,
+          role
+        );
       });
     }
     container.appendChild(btn);
+  });
+}
+
+// ── ワードウルフ オンライン同期ユーティリティ ─────────────────────
+
+function stopWolfPolling() {
+  if (state.wordwolf.pollTimer !== null) {
+    clearInterval(state.wordwolf.pollTimer);
+    state.wordwolf.pollTimer = null;
+  }
+}
+
+function startWolfPolling() {
+  pollWolfVotes();
+  state.wordwolf.pollTimer = setInterval(pollWolfVotes, 3000);
+}
+
+async function pollWolfVotes() {
+  const syncEl = document.getElementById('ww-sync-status');
+  if (!syncEl) return;
+
+  const total = state.wordwolf.total;
+
+  if (isDummyMode()) {
+    const voted = state.wordwolf.myVote !== null ? 1 : 0;
+    syncEl.textContent = `（ダミーモード）現在 ${voted} / ${total} 人が投票済み`;
+    if (state.wordwolf.myVote !== null) {
+      const revealBtn = document.getElementById('btn-reveal-wolf');
+      if (revealBtn) revealBtn.disabled = false;
+    }
+    return;
+  }
+
+  try {
+    const url = buildGasUrl('getVotes', {
+      keyword: state.wordwolf.keyword,
+      round: String(state.wordwolf.round),
+    });
+    const res = await fetch(url, { redirect: 'follow' });
+    const json = await res.json();
+
+    state.wordwolf.voteCount = json.voteCount || 0;
+    if (json.players) state.wordwolf.players = json.players;
+    if (json.votes)   state.wordwolf.allVotes = json.votes;
+
+    const voteCount = state.wordwolf.voteCount;
+    syncEl.textContent = `現在 ${voteCount} / ${total} 人が投票済み`;
+
+    const revealBtn = document.getElementById('btn-reveal-wolf');
+    if (revealBtn) revealBtn.disabled = (voteCount < total);
+  } catch {
+    syncEl.textContent = '投票状況の取得に失敗しました';
+  }
+}
+
+async function joinRoomWolf(keyword, round, name, total) {
+  if (isDummyMode()) return { ok: true, slotNumber: 1 };
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'joinRoom',
+        keyword,
+        round: String(round),
+        name,
+        total: String(total),
+      }),
+      redirect: 'follow',
+    });
+    return await res.json();
+  } catch (err) {
+    return { ok: false, error: '通信エラー: ' + err.message };
+  }
+}
+
+async function submitWolfVote(keyword, round, voter, votee, role) {
+  if (isDummyMode()) return { ok: true };
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'submitVote',
+        keyword,
+        round: String(round),
+        voter,
+        votee,
+        role,
+      }),
+      redirect: 'follow',
+    });
+    return await res.json();
+  } catch (err) {
+    return { ok: false, error: '通信エラー: ' + err.message };
+  }
+}
+
+async function fetchAndShowVoteResult() {
+  if (!isDummyMode()) {
+    try {
+      const url = buildGasUrl('getVotes', {
+        keyword: state.wordwolf.keyword,
+        round: String(state.wordwolf.round),
+      });
+      const res = await fetch(url, { redirect: 'follow' });
+      const json = await res.json();
+      if (json.players) state.wordwolf.players = json.players;
+      if (json.votes)   state.wordwolf.allVotes = json.votes;
+    } catch { /* use cached data */ }
+  }
+
+  // 投票リスト表示
+  const voteListEl = document.getElementById('ww-vote-list');
+  if (voteListEl) {
+    const votes = state.wordwolf.allVotes;
+    if (votes.length === 0) {
+      voteListEl.hidden = true;
+    } else {
+      const items = votes.map(v =>
+        `<li><strong>${escapeHtml(v.voter)}</strong> → ${escapeHtml(v.votee)}</li>`
+      ).join('');
+      voteListEl.hidden = false;
+      voteListEl.innerHTML =
+        `<h4 class="ww-vote-list-title">誰が誰に投票したか</h4>` +
+        `<ul class="ww-vote-list-items">${items}</ul>`;
+    }
+  }
+
+  // 最多得票者表示
+  const topVotedEl = document.getElementById('ww-top-voted');
+  if (topVotedEl && state.wordwolf.allVotes.length > 0) {
+    const counts = {};
+    state.wordwolf.allVotes.forEach(v => {
+      if (v.votee) counts[v.votee] = (counts[v.votee] || 0) + 1;
+    });
+    const maxVotes = Math.max(...Object.values(counts));
+    const topNames = Object.keys(counts).filter(k => counts[k] === maxVotes);
+
+    const wolfPlayer = state.wordwolf.result.wolfPlayer;
+    const wolfObj = state.wordwolf.players.find(p => p.slot === wolfPlayer);
+    const wolfName = wolfObj?.name;
+    const topIsWolf = wolfName && topNames.includes(wolfName);
+
+    const roleLabel = topIsWolf
+      ? '🐺 ウルフ — 市民の推理成功！'
+      : '👤 市民 — ウルフが逃げ切り！';
+
+    topVotedEl.hidden = false;
+    topVotedEl.innerHTML =
+      `<div class="ww-top-voted-content">` +
+      `<p class="ww-top-voted-label">最多得票 (${maxVotes}票)</p>` +
+      `<p class="ww-top-voted-name">${topNames.map(escapeHtml).join('、')}</p>` +
+      `<p class="ww-top-voted-role">${roleLabel}</p>` +
+      `</div>`;
   }
 }
 
 /** 最終結果を表示する（'wolf-win' | 'citizen-win' | 'reveal'） */
 function showWolfFinalResult(type) {
   const { wolfPlayer, citizenTopic, wolfTopic } = state.wordwolf.result;
+
+  // ウルフプレイヤー名を特定
+  const wolfObj = state.wordwolf.players.find(p => p.slot === wolfPlayer);
+  const wolfName = wolfObj?.name || `プレイヤー${wolfPlayer}`;
 
   // ヘッドライン組み立て
   const headlineEl = document.getElementById('ww-final-headline');
@@ -630,13 +832,13 @@ function showWolfFinalResult(type) {
         `<p class="ww-final-outcome-sub">逃げ切り成功！</p>`;
     } else {
       headlineEl.innerHTML =
-        `<p class="ww-final-title ww-final-reveal">実は ${wolfPlayer}番 がウルフでした</p>`;
+        `<p class="ww-final-title ww-final-reveal">実は ${escapeHtml(wolfName)} がウルフでした</p>`;
     }
   }
 
   // 詳細セット
   const el = (id) => document.getElementById(id);
-  if (el('ww-final-wolf-num')) el('ww-final-wolf-num').textContent = `${wolfPlayer}番`;
+  if (el('ww-final-wolf-num')) el('ww-final-wolf-num').textContent = wolfName;
   if (el('ww-final-citizen')) el('ww-final-citizen').textContent = citizenTopic;
   if (el('ww-final-wolf-topic')) el('ww-final-wolf-topic').textContent = wolfTopic;
 
@@ -658,17 +860,17 @@ function initWordWolfGame() {
   const btnReset = document.getElementById('btn-ww-reset');
   if (!btnCheck) return;
 
-  // ── 役割を確認する ──────────────────────────────────────────
-  btnCheck.addEventListener('click', () => {
+  // ── 役割を確認する（GASに入室登録 → スロット番号取得 → お題決定）──
+  btnCheck.addEventListener('click', async () => {
     const topics = state.data?.wordwolf;
     if (!topics || topics.length === 0) {
       setStatus('wordwolf-status', 'お題データがありません', 'error'); return;
     }
 
     const keyword = document.getElementById('ww-keyword').value.trim();
-    const round = parseInt(document.getElementById('ww-round').value, 10);
-    const myNum = parseInt(document.getElementById('ww-mynum').value, 10);
-    const total = parseInt(document.getElementById('ww-total').value, 10);
+    const round   = parseInt(document.getElementById('ww-round').value, 10);
+    const name    = document.getElementById('ww-name').value.trim();
+    const total   = parseInt(document.getElementById('ww-total').value, 10);
 
     if (!keyword) {
       setStatus('wordwolf-status', '合言葉を入力してください', 'error'); return;
@@ -676,19 +878,32 @@ function initWordWolfGame() {
     if (isNaN(round) || round < 1) {
       setStatus('wordwolf-status', '回戦数は1以上の整数を入力してください', 'error'); return;
     }
+    if (!name) {
+      setStatus('wordwolf-status', '名前を入力してください', 'error'); return;
+    }
     if (isNaN(total) || total < 2) {
       setStatus('wordwolf-status', '総人数は2以上の整数を入力してください', 'error'); return;
     }
-    if (isNaN(myNum) || myNum < 1 || myNum > total) {
-      setStatus('wordwolf-status', `プレイヤー番号は 1〜${total} の整数を入力してください`, 'error'); return;
+
+    btnCheck.disabled = true;
+    setStatus('wordwolf-status', '入室中...', 'loading');
+
+    // GASに入室登録してスロット番号を取得
+    const joinResult = await joinRoomWolf(keyword, round, name, total);
+    if (!joinResult.ok) {
+      setStatus('wordwolf-status', joinResult.error || '入室に失敗しました', 'error');
+      btnCheck.disabled = false;
+      return;
     }
 
-    // ─── シード付き乱数 ───────────────────────────────────────
+    const myNum = joinResult.slotNumber;
+
+    // ─── シード付き乱数（全員が同じお題・ウルフ番号を計算）───
     const seed = djb2Hash(keyword + String(round));
     const random = mulberry32(seed);
     const topicIndex = Math.floor(random() * topics.length);
     const wolfPlayer = Math.floor(random() * total) + 1;
-    // ─────────────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────
 
     const picked = topics[topicIndex];
     const isWolf = (myNum === wolfPlayer);
@@ -701,8 +916,13 @@ function initWordWolfGame() {
       citizenTopic: picked.citizen,
       wolfTopic: picked.wolf,
     };
-    state.wordwolf.myNum = myNum;
-    state.wordwolf.total = total;
+    state.wordwolf.myName  = name;
+    state.wordwolf.myNum   = myNum;
+    state.wordwolf.total   = total;
+    state.wordwolf.keyword = keyword;
+    state.wordwolf.round   = round;
+
+    setStatus('wordwolf-status', '');
 
     // モーダル確認 → カードフリップ
     modal.show(
@@ -720,10 +940,8 @@ function initWordWolfGame() {
         }
         state.wordwolf.flipped = true;
         btnCheck.disabled = true;
-        // 「確認しました（準備完了）」ボタンを出現させる（投票はロック）
         const readySection = document.getElementById('ww-ready-section');
         if (readySection) readySection.hidden = false;
-        setStatus('wordwolf-status', '');
       }
     );
   });
@@ -741,29 +959,68 @@ function initWordWolfGame() {
 
   // ── 投票する ────────────────────────────────────────────────
   if (btnVote) {
-    btnVote.addEventListener('click', () => {
+    btnVote.addEventListener('click', async () => {
       if (!state.wordwolf.result) {
         setStatus('wordwolf-status', '先に「役割を確認する」を押してください', 'error'); return;
       }
       document.getElementById('ww-setup').hidden = true;
       document.getElementById('ww-vote-section').hidden = false;
       state.wordwolf.phase = 'vote';
-      renderVoteButtons(state.wordwolf.total, state.wordwolf.myNum);
+
+      // 確認ボタンをロック（全員投票完了まで）
+      if (btnReveal) btnReveal.disabled = true;
+
+      // 参加プレイヤー一覧を取得して投票ボタン生成
+      let players = [];
+      if (isDummyMode()) {
+        players = Array.from({ length: state.wordwolf.total }, (_, i) => ({
+          slot: i + 1,
+          name: (i + 1 === state.wordwolf.myNum)
+            ? state.wordwolf.myName
+            : `デモ${i + 1}番`,
+        }));
+      } else {
+        try {
+          const url = buildGasUrl('getVotes', {
+            keyword: state.wordwolf.keyword,
+            round: String(state.wordwolf.round),
+          });
+          const res = await fetch(url, { redirect: 'follow' });
+          const json = await res.json();
+          players = json.players || [];
+        } catch { /* 空のまま */ }
+
+        // 自分が未登録の場合に補完
+        if (!players.some(p => p.name === state.wordwolf.myName)) {
+          players.push({ slot: state.wordwolf.myNum, name: state.wordwolf.myName });
+          players.sort((a, b) => a.slot - b.slot);
+        }
+      }
+
+      state.wordwolf.players = players;
+      renderVoteButtonsByName(players, state.wordwolf.myName);
+      startWolfPolling();
       setStatus('wordwolf-status', '');
     });
   }
 
   // ── 正解を確認する ──────────────────────────────────────────
   if (btnReveal) {
-    btnReveal.addEventListener('click', () => {
-      const { wolfPlayer, isWolf } = state.wordwolf.result;
+    btnReveal.addEventListener('click', async () => {
+      stopWolfPolling();
 
       document.getElementById('ww-vote-section').hidden = true;
       document.getElementById('ww-reveal-section').hidden = false;
 
-      // ウルフ番号を全員に表示
+      // 投票データ取得＆リスト・最多得票表示
+      await fetchAndShowVoteResult();
+
+      // ウルフ名を全員に表示
+      const { wolfPlayer, isWolf } = state.wordwolf.result;
+      const wolfObj  = state.wordwolf.players.find(p => p.slot === wolfPlayer);
+      const wolfName = wolfObj?.name || `プレイヤー${wolfPlayer}`;
       const numEl = document.getElementById('ww-announce-wolf-num');
-      if (numEl) numEl.textContent = `${wolfPlayer}番`;
+      if (numEl) numEl.textContent = wolfName;
 
       // ウルフ本人 → 逆転チャレンジ  /  市民 → 最終結果ボタン
       if (isWolf) {
@@ -799,7 +1056,21 @@ function initWordWolfGame() {
   // ── もう一回プレイ ─────────────────────────────────────────
   if (btnReset) {
     btnReset.addEventListener('click', () => {
+      const nextRound    = state.wordwolf.round + 1;
+      const savedKeyword = state.wordwolf.keyword;
+      const savedName    = state.wordwolf.myName;
+      const savedTotal   = state.wordwolf.total;
+
       resetTabState('wordwolf');
+
+      const keywordInput = document.getElementById('ww-keyword');
+      const roundInput   = document.getElementById('ww-round');
+      const nameInput    = document.getElementById('ww-name');
+      const totalInput   = document.getElementById('ww-total');
+      if (keywordInput && savedKeyword) keywordInput.value = savedKeyword;
+      if (roundInput) roundInput.value = nextRound;
+      if (nameInput && savedName) nameInput.value = savedName;
+      if (totalInput && savedTotal) totalInput.value = savedTotal;
     });
   }
 }
