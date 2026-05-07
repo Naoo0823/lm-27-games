@@ -86,6 +86,7 @@ const state = {
     voteCount: 0,
     players: [],         // [{ slot, name }, ...]
     allVotes: [],        // [{ voter, votee }, ...]
+    wolfCaught: null,    // true = ウルフが最多得票で捕まった
   },
 
   asama: {
@@ -367,6 +368,7 @@ function resetTabState(tab) {
     state.wordwolf.voteCount = 0;
     state.wordwolf.players = [];
     state.wordwolf.allVotes = [];
+    state.wordwolf.wolfCaught = null;
 
     resetCard('wordwolf-card');
 
@@ -416,6 +418,17 @@ function resetTabState(tab) {
     if (reversalInput) reversalInput.value = '';
     if (voteListEl) { voteListEl.hidden = true; voteListEl.innerHTML = ''; }
     if (topVotedEl) { topVotedEl.hidden = true; topVotedEl.innerHTML = ''; }
+
+    const voteArea = document.getElementById('ww-vote-area');
+    const voteWaiting = document.getElementById('ww-vote-waiting');
+    const wolfAnnouncement = document.getElementById('ww-wolf-announcement');
+    const revealLoading = document.getElementById('ww-reveal-loading');
+    const announceWolfNum = document.getElementById('ww-announce-wolf-num');
+    if (voteArea) voteArea.hidden = false;
+    if (voteWaiting) voteWaiting.hidden = true;
+    if (wolfAnnouncement) wolfAnnouncement.hidden = true;
+    if (revealLoading) revealLoading.hidden = true;
+    if (announceWolfNum) announceWolfNum.textContent = '';
 
     setStatus('wordwolf-status', '');
   }
@@ -791,7 +804,8 @@ async function fetchAndShowVoteResult() {
     }
   }
 
-  // 最多得票者表示
+  // 最多得票者表示 + wolfCaught 計算
+  state.wordwolf.wolfCaught = false;
   const topVotedEl = document.getElementById('ww-top-voted');
   if (topVotedEl && state.wordwolf.allVotes.length > 0) {
     const counts = {};
@@ -804,7 +818,9 @@ async function fetchAndShowVoteResult() {
     const wolfPlayer = state.wordwolf.result.wolfPlayer;
     const wolfObj = state.wordwolf.players.find(p => p.slot === wolfPlayer);
     const wolfName = wolfObj?.name;
-    const topIsWolf = wolfName && topNames.includes(wolfName);
+    const topIsWolf = !!(wolfName && topNames.includes(wolfName));
+
+    state.wordwolf.wolfCaught = topIsWolf;
 
     const nameStr = topNames.map(escapeHtml).join('・');
     const roleText = topIsWolf
@@ -1040,11 +1056,11 @@ function initWordWolfGame() {
       btnVoteConfirm.disabled = true;
       btnVoteConfirm.textContent = '投票済み ✓';
 
-      const voteStatus = document.getElementById('ww-vote-status');
-      if (voteStatus) {
-        voteStatus.textContent =
-          `${name}さんに投票しました。全員の投票が揃うまでお待ちください。`;
-      }
+      // 投票確定 → 投票エリアを隠して待機メッセージを表示
+      const voteArea = document.getElementById('ww-vote-area');
+      const voteWaiting = document.getElementById('ww-vote-waiting');
+      if (voteArea) voteArea.hidden = true;
+      if (voteWaiting) voteWaiting.hidden = false;
 
       // GASに送信
       const role = state.wordwolf.result.isWolf ? 'wolf' : 'citizen';
@@ -1066,18 +1082,27 @@ function initWordWolfGame() {
       document.getElementById('ww-vote-section').hidden = true;
       document.getElementById('ww-reveal-section').hidden = false;
 
+      // 集計中ローディングを表示
+      const revealLoading = document.getElementById('ww-reveal-loading');
+      if (revealLoading) revealLoading.hidden = false;
+
       // 投票データ取得＆リスト・最多得票表示
       await fetchAndShowVoteResult();
 
-      // ウルフ名を全員に表示
+      // ローディングを隠す
+      if (revealLoading) revealLoading.hidden = true;
+
+      // ウルフ名をセットしてからウルフ発表を表示
       const { wolfPlayer, isWolf } = state.wordwolf.result;
       const wolfObj = state.wordwolf.players.find(p => p.slot === wolfPlayer);
       const wolfName = wolfObj?.name || `プレイヤー${wolfPlayer}`;
       const numEl = document.getElementById('ww-announce-wolf-num');
       if (numEl) numEl.textContent = wolfName;
+      const wolfAnnouncement = document.getElementById('ww-wolf-announcement');
+      if (wolfAnnouncement) wolfAnnouncement.hidden = false;
 
-      // ウルフ本人 → 逆転チャレンジ  /  市民 → 最終結果ボタン
-      if (isWolf) {
+      // ウルフ本人かつ投票で捕まった → 逆転チャレンジ  /  それ以外 → 最終結果ボタン
+      if (isWolf && state.wordwolf.wolfCaught === true) {
         document.getElementById('ww-reversal-section').hidden = false;
       } else {
         document.getElementById('ww-nonwolf-section').hidden = false;

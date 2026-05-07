@@ -167,7 +167,7 @@
           議論中
         </div>
 
-        <div class="ww-vote-area">
+        <div id="ww-vote-area" class="ww-vote-area">
           <p class="ww-vote-instruction">怪しいと思うプレイヤーを選択してください</p>
           <div class="ww-vote-buttons" id="ww-vote-buttons" role="group" aria-label="投票先選択"></div>
           <p class="ww-vote-status" id="ww-vote-status" role="status" aria-live="polite"></p>
@@ -176,8 +176,11 @@
               この人に投票する
             </button>
           </div>
-          <p class="ww-sync-status" id="ww-sync-status" role="status" aria-live="polite"></p>
         </div>
+        <div id="ww-vote-waiting" class="ww-vote-waiting" hidden>
+          <p>投票しました。他のプレイヤーの投票を待っています...</p>
+        </div>
+        <p class="ww-sync-status" id="ww-sync-status" role="status" aria-live="polite"></p>
 
         <div class="ww-section-divider"></div>
 
@@ -190,6 +193,11 @@
       <!-- ─── フェーズ3: ウルフ発表 ─── -->
       <div id="ww-reveal-section" hidden aria-live="polite">
 
+        <!-- 集計中ローディング -->
+        <div id="ww-reveal-loading" class="ww-reveal-loading" hidden>
+          <p>集計中です...</p>
+        </div>
+
         <!-- 投票結果リスト -->
         <div id="ww-vote-list" class="ww-vote-list" hidden></div>
 
@@ -197,7 +205,7 @@
         <div id="ww-top-voted" class="ww-top-voted" hidden></div>
 
         <!-- 全員が見る: ウルフ発表 -->
-        <div class="ww-wolf-announcement">
+        <div id="ww-wolf-announcement" class="ww-wolf-announcement" hidden>
           <p class="ww-announce-sub">今回のウルフは</p>
           <p class="ww-announce-num" id="ww-announce-wolf-num"></p>
           <p class="ww-announce-sub">さんでした</p>

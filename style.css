@@ -1040,6 +1040,34 @@ header {
   min-height: 20px;
 }
 
+/* 投票確定後の待機メッセージ */
+.ww-vote-waiting {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+/* 正解確認後の集計中ローディング */
+.ww-reveal-loading {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
 /* 投票結果リスト */
 .ww-vote-list {
   background: var(--card-bg);
