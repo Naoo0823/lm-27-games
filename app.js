@@ -73,18 +73,19 @@ const state = {
 
   wordwolf: {
     flipped: false,
-    result: null,     // { isWolf, myTopic, wolfPlayer, citizenTopic, wolfTopic }
-    myVote: null,     // 投票先プレイヤー名
-    phase: 'setup',   // 'setup' | 'vote' | 'reveal' | 'result'
+    result: null,       // { isWolf, myTopic, wolfPlayer, citizenTopic, wolfTopic }
+    selectedVotee: null, // 選択中（未確定）の投票先名
+    myVote: null,        // 確定済みの投票先名
+    phase: 'setup',      // 'setup' | 'vote' | 'reveal' | 'result'
     myName: '',
-    myNum: 0,         // GASが割り当てたスロット番号
+    myNum: 0,            // GASが割り当てたスロット番号
     total: 0,
     keyword: '',
     round: 1,
     pollTimer: null,
     voteCount: 0,
-    players: [],      // [{ slot, name }, ...]
-    allVotes: [],     // [{ voter, votee }, ...]
+    players: [],         // [{ slot, name }, ...]
+    allVotes: [],        // [{ voter, votee }, ...]
   },
 
   asama: {
@@ -355,6 +356,7 @@ function resetTabState(tab) {
 
     state.wordwolf.flipped = false;
     state.wordwolf.result = null;
+    state.wordwolf.selectedVotee = null;
     state.wordwolf.myVote = null;
     state.wordwolf.phase = 'setup';
     state.wordwolf.myName = '';
@@ -380,9 +382,14 @@ function resetTabState(tab) {
     const btnCheck = document.getElementById('btn-check-wordwolf');
     const btnVote = document.getElementById('btn-start-vote');
     const btnRevealWolf = document.getElementById('btn-reveal-wolf');
+    const btnVoteConfirmR = document.getElementById('btn-vote-confirm');
     if (btnCheck) btnCheck.disabled = false;
     if (btnVote) btnVote.disabled = true;
     if (btnRevealWolf) btnRevealWolf.disabled = true;
+    if (btnVoteConfirmR) {
+      btnVoteConfirmR.disabled = true;
+      btnVoteConfirmR.textContent = 'この人に投票する';
+    }
 
     // 準備完了セクションをリセット
     const readySection = document.getElementById('ww-ready-section');
@@ -604,9 +611,10 @@ function initTurtleGame() {
 // ゲームC: ワードウルフ（シード付き乱数で同期）
 // ============================================================
 
-/** 投票ボタンを名前ベースで動的生成する */
+/** 投票ボタンを名前ベースで動的生成する（選択→確定の2ステップ） */
 function renderVoteButtonsByName(players, myName) {
   const container = document.getElementById('ww-vote-buttons');
+  const confirmBtn = document.getElementById('btn-vote-confirm');
   if (!container) return;
   container.innerHTML = '';
 
@@ -622,34 +630,35 @@ function renderVoteButtonsByName(players, myName) {
     const btn = document.createElement('button');
     btn.className = 'ww-vote-btn';
     btn.textContent = name;
+    btn.dataset.voteName = name;
 
     if (name === myName) {
       btn.disabled = true;
       btn.classList.add('is-self');
       btn.setAttribute('aria-label', `${name}（自分）`);
     } else {
-      btn.setAttribute('aria-label', `${name}に投票`);
-      btn.addEventListener('click', async () => {
-        if (state.wordwolf.myVote !== null) return;
-        state.wordwolf.myVote = name;
-        container.querySelectorAll('.ww-vote-btn').forEach(b => { b.disabled = true; });
-        btn.classList.add('is-voted');
-        btn.disabled = false;
+      btn.setAttribute('aria-label', `${name}を選択`);
+      btn.addEventListener('click', () => {
+        if (state.wordwolf.myVote !== null) return; // 確定済みなら無視
 
+        // 選択状態を更新
+        state.wordwolf.selectedVotee = name;
+
+        // 全ボタンの選択クラスをリセットして、押したボタンに付与
+        container.querySelectorAll('.ww-vote-btn').forEach(b => {
+          b.classList.remove('is-selected-vote');
+        });
+        btn.classList.add('is-selected-vote');
+
+        // 選択状態を表示
         const voteStatus = document.getElementById('ww-vote-status');
         if (voteStatus) {
           voteStatus.textContent =
-            `${name}さんに投票しました。全員の投票が揃うまでお待ちください。`;
+            `${name}さんを選択中。よければ「この人に投票する」を押してください。`;
         }
 
-        const role = state.wordwolf.result.isWolf ? 'wolf' : 'citizen';
-        await submitWolfVote(
-          state.wordwolf.keyword,
-          state.wordwolf.round,
-          state.wordwolf.myName,
-          name,
-          role
-        );
+        // 確定ボタンを有効化
+        if (confirmBtn) confirmBtn.disabled = false;
       });
     }
     container.appendChild(btn);
@@ -797,16 +806,16 @@ async function fetchAndShowVoteResult() {
     const wolfName = wolfObj?.name;
     const topIsWolf = wolfName && topNames.includes(wolfName);
 
-    const roleLabel = topIsWolf
-      ? '🐺 ウルフ — 市民の推理成功！'
-      : '👤 市民 — ウルフが逃げ切り！';
+    const nameStr = topNames.map(escapeHtml).join('・');
+    const roleText = topIsWolf
+      ? `${nameStr}さんは【ウルフ】でした！`
+      : `${nameStr}さんは【市民】でした。ウルフの逃げ切り勝利！`;
 
     topVotedEl.hidden = false;
     topVotedEl.innerHTML =
       `<div class="ww-top-voted-content">` +
       `<p class="ww-top-voted-label">最多得票 (${maxVotes}票)</p>` +
-      `<p class="ww-top-voted-name">${topNames.map(escapeHtml).join('、')}</p>` +
-      `<p class="ww-top-voted-role">${roleLabel}</p>` +
+      `<p class="ww-top-voted-role">${roleText}</p>` +
       `</div>`;
   }
 }
@@ -854,6 +863,7 @@ function showWolfFinalResult(type) {
 function initWordWolfGame() {
   const btnCheck = document.getElementById('btn-check-wordwolf');
   const btnVote = document.getElementById('btn-start-vote');
+  const btnVoteConfirm = document.getElementById('btn-vote-confirm');
   const btnReveal = document.getElementById('btn-reveal-wolf');
   const btnReversal = document.getElementById('btn-submit-reversal');
   const btnFinal = document.getElementById('btn-show-final');
@@ -1001,6 +1011,50 @@ function initWordWolfGame() {
       renderVoteButtonsByName(players, state.wordwolf.myName);
       startWolfPolling();
       setStatus('wordwolf-status', '');
+    });
+  }
+
+  // ── この人に投票する（GAS送信・確定）──────────────────────────
+  if (btnVoteConfirm) {
+    btnVoteConfirm.addEventListener('click', async () => {
+      const name = state.wordwolf.selectedVotee;
+      if (!name || state.wordwolf.myVote !== null) return;
+
+      // 投票を確定
+      state.wordwolf.myVote = name;
+
+      // 全ボタンをロック。選択ボタンだけ is-voted に変更
+      const container = document.getElementById('ww-vote-buttons');
+      if (container) {
+        container.querySelectorAll('.ww-vote-btn').forEach(b => {
+          b.classList.remove('is-selected-vote');
+          b.disabled = true;
+          if (b.dataset.voteName === name) {
+            b.classList.add('is-voted');
+            b.disabled = false; // 視覚的に投票先を明示するため opacity を維持
+          }
+        });
+      }
+
+      // 確定ボタンを投票済み状態に
+      btnVoteConfirm.disabled = true;
+      btnVoteConfirm.textContent = '投票済み ✓';
+
+      const voteStatus = document.getElementById('ww-vote-status');
+      if (voteStatus) {
+        voteStatus.textContent =
+          `${name}さんに投票しました。全員の投票が揃うまでお待ちください。`;
+      }
+
+      // GASに送信
+      const role = state.wordwolf.result.isWolf ? 'wolf' : 'citizen';
+      await submitWolfVote(
+        state.wordwolf.keyword,
+        state.wordwolf.round,
+        state.wordwolf.myName,
+        name,
+        role
+      );
     });
   }
 

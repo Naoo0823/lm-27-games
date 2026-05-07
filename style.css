@@ -510,11 +510,21 @@ header {
   cursor: not-allowed;
 }
 
-/* 自分が選んだ投票先 */
+/* 確定済みの投票先 */
 .ww-vote-btn.is-voted {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  opacity: 1;
+}
+
+/* 選択中（未確定）の投票先 */
+.ww-vote-btn.is-selected-vote {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  border-width: 2.5px;
+  color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
   opacity: 1;
 }
 
@@ -1010,6 +1020,17 @@ header {
    ワードウルフ オンライン同期 — 追加スタイル
    ============================================================ */
 
+.ww-vote-confirm-row {
+  margin-top: 16px;
+}
+
+.ww-vote-confirm-btn {
+  width: 100%;
+  padding: 14px 28px;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+}
+
 .ww-sync-status {
   margin-top: 10px;
   font-size: 0.88rem;
@@ -1088,8 +1109,9 @@ header {
 }
 
 .ww-top-voted-role {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
   margin-top: 4px;
+  line-height: 1.4;
 }
